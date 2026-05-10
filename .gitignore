@@ -5,3 +5,8 @@ venv/
 dataset.zip
 images/
 test_ocr.py
+aws/
+awscliv2.zip
+*.pem
+*.pyc
+AI-OCR dataset/

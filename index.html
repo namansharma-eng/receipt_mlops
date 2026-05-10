@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receipt OCR System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .upload-box {
+      background: white;
+      border: 2px dashed #007bff;
+      border-radius: 8px;
+      padding: 30px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input[type="file"] {
+      margin: 10px 0;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+    .result-box {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      display: none;
+    }
+    .result-box h2 {
+      color: #333;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th {
+      background: #007bff;
+      color: white;
+      padding: 10px;
+      text-align: left;
+    }
+    td {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    tr:hover td {
+      background: #f9f9f9;
+    }
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .field-label {
+      font-weight: bold;
+      color: #555;
+    }
+    .field-value {
+      color: #333;
+    }
+    .status {
+      text-align: center;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+    .status.online {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.offline {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .loading {
+      text-align: center;
+      display: none;
+      color: #007bff;
+      margin-top: 10px;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+      display: none;
+    }
+    .json-box {
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      margin-top: 15px;
+      font-family: monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    img#preview {
+      max-width: 200px;
+      margin-top: 10px;
+      border-radius: 5px;
+      display: none;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Receipt OCR System</h1>
+  <p class="subtitle">BTech Final Project | Naman Sharma | Shobhit University</p>
+
+  <!-- API Status -->
+  <div class="status offline" id="statusBar">
+    Checking API status...
+  </div>
+
+  <!-- Upload Box -->
+  <div class="upload-box">
+    <p>Select a receipt image to extract data</p>
+    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png">
+    <br>
+    <img id="preview" src="" alt="Preview">
+    <br>
+    <button id="submitBtn" onclick="processReceipt()" disabled>
+      Process Receipt
+    </button>
+  </div>
+
+  <div class="loading" id="loading">Processing... please wait</div>
+  <div class="error" id="errorBox"></div>
+
+  <!-- Result Box -->
+  <div class="result-box" id="resultBox">
+    <h2>Extracted Data</h2>
+
+    <div class="field-row">
+      <span class="field-label">Store Name</span>
+      <span class="field-value" id="storeName">-</span>
+    </div>
+    <div class="field-row">
+      <span class="field-label">Date</span>
+      <span class="field-value" id="date">-</span>
+    </div>
+    <div class="field-row">
+      <span class="field-label">Total Amount</span>
+      <span class="field-value" id="totalAmount">-</span>
+    </div>
+
+    <h3 style="margin-top:20px;">Line Items</h3>
+    <table id="itemsTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Item Name</th>
+          <th>Price</th>
+        </tr>
+      </thead>
+      <tbody id="itemsBody">
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:20px;">Raw JSON Response</h3>
+    <div class="json-box" id="jsonBox"></div>
+
+    <button onclick="resetForm()" style="margin-top:15px;background:#6c757d;">
+      Process Another Receipt
+    </button>
+  </div>
+
+<script>
+  const API_URL = 'http://127.0.0.1:8000';
+
+  // Check API status on load
+  async function checkAPI() {
+    try {
+      const res = await fetch(API_URL + '/health');
+      const data = await res.json();
+      if (data.status === 'healthy') {
+        document.getElementById('statusBar').className = 'status online';
+        document.getElementById('statusBar').textContent = 'API Status: Online';
+        document.getElementById('submitBtn').disabled = false;
+      }
+    } catch (e) {
+      document.getElementById('statusBar').className = 'status offline';
+      document.getElementById('statusBar').textContent = 'API Status: Offline - Start uvicorn first';
+    }
+  }
+  checkAPI();
+
+  // Show preview on file select
+  document.getElementById('fileInput').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const preview = document.getElementById('preview');
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  async function processReceipt() {
+    const fileInput = document.getElementById('fileInput');
+    if (!fileInput.files[0]) {
+      alert('Please select an image first!');
+      return;
+    }
+
+    // Show loading
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('errorBox').style.display = 'none';
+    document.getElementById('resultBox').style.display = 'none';
+    document.getElementById('submitBtn').disabled = true;
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    try {
+      const res = await fetch(API_URL + '/process', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.detail || 'Error');
+
+      // Fill results
+      const d = data.data;
+      document.getElementById('storeName').textContent =
+        d.store_name.value || 'Not detected';
+      document.getElementById('date').textContent =
+        d.date.value || 'Not detected';
+      document.getElementById('totalAmount').textContent =
+        d.total_amount.value ? '₹ ' + d.total_amount.value : 'Not detected';
+
+      // Items table
+      const tbody = document.getElementById('itemsBody');
+      tbody.innerHTML = '';
+      if (d.items && d.items.length > 0) {
+        d.items.forEach((item, i) => {
+          tbody.innerHTML += `<tr>
+            <td>${i + 1}</td>
+            <td>${item.name}</td>
+            <td>₹ ${item.price}</td>
+          </tr>`;
+        });
+      } else {
+        tbody.innerHTML = '<tr><td colspan="3">No items detected</td></tr>';
+      }
+
+      // JSON
+      document.getElementById('jsonBox').textContent =
+        JSON.stringify(data, null, 2);
+
+      document.getElementById('resultBox').style.display = 'block';
+
+    } catch (err) {
+      document.getElementById('errorBox').textContent =
+        'Error: ' + err.message;
+      document.getElementById('errorBox').style.display = 'block';
+    } finally {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('submitBtn').disabled = false;
+    }
+  }
+
+  function resetForm() {
+    document.getElementById('fileInput').value = '';
+    document.getElementById('preview').style.display = 'none';
+    document.getElementById('resultBox').style.display = 'none';
+    document.getElementById('errorBox').style.display = 'none';
+    window.scrollTo(0, 0);
+  }
+</script>
+
+</body>
+</html>
