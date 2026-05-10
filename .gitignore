@@ -10,3 +10,7 @@ awscliv2.zip
 *.pem
 *.pyc
 AI-OCR dataset/
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/.terraform.lock.hcl
