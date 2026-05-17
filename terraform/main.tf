@@ -80,7 +80,7 @@ apt-get install -y docker.io docker-compose-plugin git
 systemctl enable docker
 systemctl start docker
 usermod -aG docker ubuntu
-git clone https://github.com/namansharma-eng/receipt-mlops.git /home/ubuntu/receipt_mlops
+git clone https://github.com/namansharma-eng/receipt_mlops.git /home/ubuntu/receipt_mlops
 cd /home/ubuntu/receipt_mlops
 sudo docker compose up -d
 SCRIPT
