@@ -32,6 +32,7 @@ COPY extraction.py    .
 COPY confidence.py    .
 COPY utils.py         .
 COPY summary.py       .
+COPY index.html       .
 
 RUN mkdir -p output images
 
