@@ -75,12 +75,16 @@ resource "aws_instance" "receipt_server" {
 
   user_data = base64encode(<<-SCRIPT
 #!/bin/bash
+exec > /var/log/user-data.log 2>&1
 apt-get update -y
-apt-get install -y docker.io docker-compose-plugin git
+apt-get install -y docker.io git curl
+curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
 systemctl enable docker
 systemctl start docker
 usermod -aG docker ubuntu
 git clone https://github.com/namansharma-eng/receipt_mlops.git /home/ubuntu/receipt_mlops
+chown -R ubuntu:ubuntu /home/ubuntu/receipt_mlops
 cd /home/ubuntu/receipt_mlops
 sudo docker compose up -d
 SCRIPT
