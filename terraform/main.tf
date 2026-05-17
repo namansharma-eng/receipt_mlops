@@ -73,18 +73,18 @@ resource "aws_instance" "receipt_server" {
   key_name               = var.key_pair_name
   vpc_security_group_ids = [aws_security_group.receipt_sg.id]
 
-  user_data = <<-EOF
-    #!/bin/bash
-    apt-get update -y
-    apt-get install -y docker.io docker-compose-plugin git
-    systemctl enable docker
-    systemctl start docker
-    usermod -aG docker ubuntu
-    git clone https://github.com/namansharma-eng/receipt-mlops.git /home/ubuntu/receipt_mlops
-    cd /home/ubuntu/receipt_mlops
-    docker compose up -d
-  EOF
-
+  user_data = base64encode(<<-SCRIPT
+#!/bin/bash
+apt-get update -y
+apt-get install -y docker.io docker-compose-plugin git
+systemctl enable docker
+systemctl start docker
+usermod -aG docker ubuntu
+git clone https://github.com/namansharma-eng/receipt-mlops.git /home/ubuntu/receipt_mlops
+cd /home/ubuntu/receipt_mlops
+sudo docker compose up -d
+SCRIPT
+  )
   tags = {
     Name = "receipt-mlops"
   }
